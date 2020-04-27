@@ -2,7 +2,7 @@
 
 This proposal defines a mechanism such that JavaScript developers can define their own behavior for objects when they undergo [HTML serialization/deserialization](https://html.spec.whatwg.org/#safe-passing-of-structured-data), e.g., in [`postMessage`](https://html.spec.whatwg.org/#window-post-message-steps) or [IndexedDB](https://w3c.github.io/IndexedDB/#object-store-storage-operation).
 
-The HTML serialization (historically called "structured clone") algorithm includes meaningful serialization and transfer semantics for certain built-in JavaScript and web platform datatypes. However, user-defined objects are cloned by the rough equivalent of `{...obj}`--that is, copying only own properties. This proposal allows classes to define their own serialization and transfer algorithms.
+The HTML serialization (historically called "structured clone") algorithm includes meaningful serialization semantics for certain built-in JavaScript and web platform datatypes. However, user-defined objects are cloned by the rough equivalent of `{...obj}`--that is, copying only own properties. This proposal allows classes to define their own serialization algorithms.
 
 ## Motivation
 
@@ -50,38 +50,24 @@ register(Person);
 - Performance:
     - Minimum requirement: Do not add overhead to the serialization algorithm applied to existing objects (e.g., through additional property accesses).
     - Ideally: Performance of user-defined structured clone should be similar to the mechanism that would be written by hand. For example, the interface should not require additional allocations which would otherwise be unnecessary.
-- Expressivity: Both serialize and transfer operations should be supported.
+- Expressivity: (TBD exactly how)
 
 ## Proposed mechanism
 
 ### Interface
 
-The [built-in module](https://github.com/tc39/proposal-javascript-standard-library/) `@std/structured-clone` exports classes which are designed to be subclassed to define structured clone semantics.
-- To support serialization:
   ```js
-  import { Serializable, register } from "@std/structured-clone";
   class Klass extends Serializable {
     constructor() { super(); }
     serialize(forStorage) { /* return another object which could be serialized */ }
     static deserialize(obj) { /* return an instance of Klass */ }
   }
-  register(Klass);
+  Klass.register();
   ```
-- To support transfer (e:
-  ```js
-  import { Transferable, register } from "@std/structured-clone";
-  class Klass extends Transferable {
-    constructor() { super(); }
-    transfer() { /* return another object which could be transfered */ }
-    static receiveTransfer(obj) { /* return an instance of Klass */ }
-  }
-  register(Klass);
-  ```
-- To support both, use the `SeriaizableTransferable` class and override all four methods.
 
 ### How it works at a high level
 
-When a subclass of Serializable is serialized, e.g., by `postMessage`, the `serialize` method is called to serialize it the sending end. This is expected to return return a simpler object, which can then be serialized fully into the browser's internal data structures. Along with that serialization is an identifier for the class (described in more detail in the "Class identifier tuple" section). On the receiving end, the class identifier is looked up, in order to find the corresponding, separate class in that Realm to call for deserialization. Transfer semantics are analogous.
+When a subclass of Serializable is serialized, e.g., by `postMessage`, the `serialize` method is called to serialize it the sending end. This is expected to return return a simpler object, which can then be serialized fully into the browser's internal data structures. Along with that serialization is an identifier for the class (described in more detail in the "Class identifier tuple" section). On the receiving end, the class identifier is looked up, in order to find the corresponding, separate class in that Realm to call for deserialization.
 
 ### Algorithm modifications
 
